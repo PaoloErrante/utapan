@@ -26,8 +26,8 @@ db.init_db()
 
 
 if check_password():
-    st.title("🥖 Bakery Cost & Retail Price Calculator")
-    st.write("An application to calculate the retail price per kg based on Food Cost, Fixed Overhead, Labor, and Profit Margin.")
+    st.title("🥖 Utapan Cost & Retail Price Calculator")
+    st.write("An application per la persona que j'aime le plus: Cindy. This is meant to help her to calculate the retail price per kg based on Food Cost, Fixed Overhead, Labor, and Profit Margin.")
     
     # Sidebar: Production parameters
     st.sidebar.header("⚙️ General Settings")
@@ -75,7 +75,7 @@ if check_password():
             df_ing = pd.DataFrame(ingredients_db, columns=["ID", "Name", "Category", "Price", "Qty", "Unit", "Unit Cost"])
             
             # Session state for dynamic rows
-            if "recipe_items" not in st.session_dict():
+            if "recipe_items" not in st.session_state:
                 st.session_state.recipe_items = [
                     {"ingredient": "Type 0 Flour", "dose": 6.5},
                     {"ingredient": "Water", "dose": 4.5},
@@ -109,7 +109,6 @@ if check_password():
                 
                 row_cost = dose * unit_cost
                 total_food_cost_batch += row_cost
-                
                 c3.write(f"€ {unit_cost:.3f}/{unit}")
                 c4.write(f"**€ {row_cost:.2f}**")
                 
