@@ -62,7 +62,7 @@ if check_password():
         
         col_r1, col_r2 = st.columns([2, 1])
         with col_r1:
-            recipe_name = st.text_input("Product / Recipe Name:", value="Classic White Bread")
+            recipe_name = st.text_input("Product / Recipe Name:", value="Pain Courage")
         with col_r2:
             batch_yield_kg = st.number_input("Finished Bread Yield per Batch (kg):", min_value=0.1, value=10.0, step=0.5)
     
