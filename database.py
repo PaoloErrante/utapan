@@ -33,12 +33,6 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM ingredients")
     if cursor.fetchone()[0] == 0:
         default_ingredients = [
-            ("Type 0 Flour", "Flours", 90.0, 100.0, "kg", 0.90),
-            ("Whole Wheat Flour", "Flours", 35.0, 25.0, "kg", 1.40),
-            ("Water", "Liquids", 2.0, 1000.0, "L", 0.002),
-            ("Fresh Yeast", "Leavening", 3.50, 1.0, "kg", 3.50),
-            ("Fine Sea Salt", "Seasoning", 7.50, 25.0, "kg", 0.30),
-            ("Paper Bags", "Packaging", 40.0, 1000.0, "pcs", 0.04)
         ]
         cursor.executemany('''
             INSERT INTO ingredients (name, category, purchase_price, purchase_qty, unit, unit_cost)
@@ -49,10 +43,6 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM fixed_costs")
     if cursor.fetchone()[0] == 0:
         default_costs = [
-            ("Bakery Rent", 700.0),
-            ("Electricity & Gas (Oven)", 650.0),
-            ("Accounting & Insurance", 250.0),
-            ("Equipment Depreciation & Maintenance", 150.0)
         ]
         cursor.executemany('''
             INSERT INTO fixed_costs (item, monthly_amount)

@@ -77,11 +77,6 @@ if check_password():
             # Session state for dynamic rows
             if "recipe_items" not in st.session_state:
                 st.session_state.recipe_items = [
-                    {"ingredient": "Type 0 Flour", "dose": 6.5},
-                    {"ingredient": "Water", "dose": 4.5},
-                    {"ingredient": "Fresh Yeast", "dose": 0.1},
-                    {"ingredient": "Fine Sea Salt", "dose": 0.13},
-                    {"ingredient": "Paper Bags", "dose": 10.0}
                 ]
     
             col_add, col_clear = st.columns([1, 5])
