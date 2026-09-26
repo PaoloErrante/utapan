@@ -28,7 +28,17 @@ def init_db():
             monthly_amount REAL NOT NULL
         )
     ''')
-    
+    # Saved Recipes Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS recipes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            yield_kg REAL NOT NULL,
+            labor_hours REAL NOT NULL,
+            margin REAL NOT NULL,
+            data_json TEXT NOT NULL
+        )
+    ''')
     # Populate default ingredients if empty
     cursor.execute("SELECT COUNT(*) FROM ingredients")
     if cursor.fetchone()[0] == 0:
@@ -100,5 +110,30 @@ def delete_fixed_cost(cost_id):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM fixed_costs WHERE id = ?", (cost_id,))
+    conn.commit()
+    conn.close()
+def save_recipe(name, yield_kg, labor_hours, margin, items_list):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    data_json = json.dumps(items_list)
+    cursor.execute('''
+        INSERT OR REPLACE INTO recipes (name, yield_kg, labor_hours, margin, data_json)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (name, yield_kg, labor_hours, margin, data_json))
+    conn.commit()
+    conn.close()
+
+def get_recipes():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, yield_kg, labor_hours, margin, data_json FROM recipes")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete_recipe(recipe_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
     conn.commit()
     conn.close()
