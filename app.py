@@ -192,7 +192,7 @@ if check_password():
             col_cat1, col_cat2, col_cat3 = st.columns(3)
 
             # Add Category
-with col_cat1:
+        with col_cat1:
                 st.markdown("##### Add New Category")
                 new_cat_name = st.text_input("Category Name", key="new_cat_input")
                 if st.button("➕ Add Category"):
