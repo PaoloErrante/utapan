@@ -59,7 +59,7 @@ if check_password():
     st.sidebar.metric("Total Monthly Overhead", f"€ {total_fixed_costs_monthly:.2f}")
     st.sidebar.metric("Fixed Overhead / kg", f"€ {fixed_incidence_per_kg:.2f} / kg")
 
-    tab1, tab2, tab3 = st.tabs(["📝 Recipe Calculator", "🌾 Raw Materials List", "🏢 Monthly Fixed Overhead"])
+    tab1, tab2, tab3 = st.tabs(["📝 Recipe Calculator", "🌾 Raw Materials & Categories", "🏢 Monthly Fixed Overhead"])
 
     # --- TAB 1: RECIPE CALCULATOR ---
     with tab1:
@@ -183,16 +183,17 @@ if check_password():
                     st.success(f"Recipe '{selected_recipe_name}' deleted.")
                     st.rerun()
 
-    # --- TAB 2: RAW MATERIALS LIST & CATEGORIES---
+    # --- TAB 2: RAW MATERIALS & CATEGORIES ---
     with tab2:
         st.subheader("Raw Materials Management & Category Management")
+        
         # Expander for managing categories
         with st.expander("🏷️ Manage Ingredient Categories (Add / Edit / Delete)", expanded=False):
             cat_list = db.get_categories()
             col_cat1, col_cat2, col_cat3 = st.columns(3)
 
             # Add Category
-        with col_cat1:
+            with col_cat1:
                 st.markdown("##### Add New Category")
                 new_cat_name = st.text_input("Category Name", key="new_cat_input")
                 if st.button("➕ Add Category"):
@@ -218,12 +219,13 @@ if check_password():
                 st.markdown("##### Delete Category")
                 if cat_list:
                     del_cat_tuple = st.selectbox("Select Category to Delete", cat_list, format_func=lambda x: x[1], key="del_cat_select")
-                    if st.button("🗑️ Delete Category"):
+                    if st.button("🗑️️ Delete Category"):
                         db.delete_category(del_cat_tuple[0])
                         st.success("Category deleted.")
                         st.rerun()
 
         st.markdown("---")
+        
         col_in1, col_in2 = st.columns([2, 1])
         with col_in1:
             ing_data = db.get_ingredients()
@@ -238,9 +240,15 @@ if check_password():
 
         with col_in2:
             st.markdown("##### Add / Update Ingredient")
+            
+            # Caricamento dinamico delle categorie dal DB
+            categories_db = [c[1] for c in db.get_categories()]
+            if not categories_db:
+                categories_db = ["Other"]
+
             with st.form("form_ingredient"):
                 nome_i = st.text_input("Ingredient Name")
-                cat_i = st.selectbox("Category", ["Flours", "Leavening", "Liquids", "Seasoning", "Packaging", "Other"])
+                cat_i = st.selectbox("Category", categories_db)
                 prezzo_i = st.number_input("Purchase Price (€)", min_value=0.0, step=1.0)
                 qta_i = st.number_input("Purchased Quantity", min_value=0.01, step=1.0)
                 unita_i = st.selectbox("Unit of Measure", ["kg", "L", "pcs", "g"])
