@@ -19,7 +19,7 @@ def check_password():
 
     st.title("🔒 Restricted Access")
     st.text_input(
-        "Enter password to access the application:", 
+        "Inserisci la password to access the application, se non sei Cindy get out of here", 
         type="password", 
         on_change=password_entered, 
         key="password_input"
@@ -183,10 +183,47 @@ if check_password():
                     st.success(f"Recipe '{selected_recipe_name}' deleted.")
                     st.rerun()
 
-    # --- TAB 2: RAW MATERIALS LIST ---
+    # --- TAB 2: RAW MATERIALS LIST & CATEGORIES---
     with tab2:
-        st.subheader("Raw Materials Management")
-        
+        st.subheader("Raw Materials Management & Category Management")
+        # Expander for managing categories
+        with st.expander("🏷️ Manage Ingredient Categories (Add / Edit / Delete)", expanded=False):
+            cat_list = db.get_categories()
+            col_cat1, col_cat2, col_cat3 = st.columns(3)
+
+            # Add Category
+with col_cat1:
+                st.markdown("##### Add New Category")
+                new_cat_name = st.text_input("Category Name", key="new_cat_input")
+                if st.button("➕ Add Category"):
+                    if new_cat_name:
+                        db.add_category(new_cat_name)
+                        st.success(f"Category '{new_cat_name}' added!")
+                        st.rerun()
+
+            # Edit Category
+            with col_cat2:
+                st.markdown("##### Edit Category")
+                if cat_list:
+                    edit_cat_tuple = st.selectbox("Select Category to Rename", cat_list, format_func=lambda x: x[1], key="edit_cat_select")
+                    updated_cat_name = st.text_input("New Name", value=edit_cat_tuple[1], key="edit_cat_input")
+                    if st.button("✏️ Update Category"):
+                        if updated_cat_name:
+                            db.update_category(edit_cat_tuple[0], updated_cat_name)
+                            st.success("Category renamed successfully!")
+                            st.rerun()
+
+            # Delete Category
+            with col_cat3:
+                st.markdown("##### Delete Category")
+                if cat_list:
+                    del_cat_tuple = st.selectbox("Select Category to Delete", cat_list, format_func=lambda x: x[1], key="del_cat_select")
+                    if st.button("🗑️ Delete Category"):
+                        db.delete_category(del_cat_tuple[0])
+                        st.success("Category deleted.")
+                        st.rerun()
+
+        st.markdown("---")
         col_in1, col_in2 = st.columns([2, 1])
         with col_in1:
             ing_data = db.get_ingredients()

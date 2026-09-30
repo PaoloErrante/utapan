@@ -6,7 +6,15 @@ def init_db():
     """Initializes the SQLite database tables with default values."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
+
+    # Categories Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )
+    ''')
+
     # Ingredients Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ingredients (
@@ -62,6 +70,41 @@ def init_db():
     conn.commit()
     conn.close()
 
+# --- CATEGORY FUNCTIONS ---
+def get_categories():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name FROM categories ORDER BY name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def add_category(name):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (name,))
+    conn.commit()
+    conn.close()
+
+def update_category(cat_id, new_name):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    # Update category name in ingredients table first to preserve consistency
+    cursor.execute("SELECT name FROM categories WHERE id = ?", (cat_id,))
+    old_name = cursor.fetchone()
+    if old_name:
+        cursor.execute("UPDATE ingredients SET category = ? WHERE category = ?", (new_name, old_name[0]))
+    cursor.execute("UPDATE categories SET name = ? WHERE id = ?", (new_name, cat_id))
+    conn.commit()
+    conn.close()
+
+def delete_category(cat_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM categories WHERE id = ?", (cat_id,))
+    conn.commit()
+    conn.close()
+
 def get_ingredients():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -112,6 +155,7 @@ def delete_fixed_cost(cost_id):
     cursor.execute("DELETE FROM fixed_costs WHERE id = ?", (cost_id,))
     conn.commit()
     conn.close()
+
 def save_recipe(name, yield_kg, labor_hours, margin, items_list):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
