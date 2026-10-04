@@ -59,17 +59,17 @@ if check_password():
     st.sidebar.metric("Total Monthly Overhead", f"€ {total_fixed_costs_monthly:.2f}")
     st.sidebar.metric("Fixed Overhead / kg", f"€ {fixed_incidence_per_kg:.2f} / kg")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📝 Recipe Calculator", 
     "🌾 Raw Materials & Categories", 
     "🏢 Monthly Fixed Overhead",
     "📅 Orders & Shopping List",
     "👥 Client Directory"
-])
+    ])
     # --- TAB 1: RECIPE CALCULATOR ---
     with tab1:
         st.subheader("Recipe Costing & Saved Recipes")
-        
+
         # Load saved recipe dropdown
         saved_recipes = db.get_recipes()
         recipe_options = ["-- New / Custom Recipe --"] + [r[1] for r in saved_recipes]
