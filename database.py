@@ -67,6 +67,37 @@ def init_db():
             VALUES (?, ?)
         ''', default_costs)
 
+    # Aggiungi queste tabelle dentro init_db() in database.py
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS clients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT,
+            email TEXT,
+            notes TEXT
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_id INTEGER,
+            delivery_date TEXT NOT NULL,
+            status TEXT DEFAULT 'Pending',
+            FOREIGN KEY (client_id) REFERENCES clients (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER,
+            recipe_id INTEGER,
+            quantity REAL NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders (id),
+            FOREIGN KEY (recipe_id) REFERENCES recipes (id)
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -181,3 +212,117 @@ def delete_recipe(recipe_id):
     cursor.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
     conn.commit()
     conn.close()
+
+
+# --- CLIENT FUNCTIONS ---
+def get_clients():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, phone, email, notes FROM clients ORDER BY name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def add_client(name, phone="", email="", notes=""):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO clients (name, phone, email, notes) VALUES (?, ?, ?, ?)", (name, phone, email, notes))
+    conn.commit()
+    conn.close()
+
+def delete_client(client_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM clients WHERE id = ?", (client_id,))
+    conn.commit()
+    conn.close()
+
+# --- ORDER FUNCTIONS ---
+def add_order(client_id, delivery_date, items):
+    """
+    items è una lista di dizionari: [{'recipe_id': int, 'quantity': float}]
+    """
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO orders (client_id, delivery_date) VALUES (?, ?)", (client_id, delivery_date))
+    order_id = cursor.lastrowid
+    
+    for item in items:
+        cursor.execute("INSERT INTO order_items (order_id, recipe_id, quantity) VALUES (?, ?, ?)", 
+                       (order_id, item['recipe_id'], item['quantity']))
+    
+    conn.commit()
+    conn.close()
+
+def get_orders_by_date(start_date, end_date):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT o.id, c.name, o.delivery_date, o.status
+        FROM orders o
+        JOIN clients c ON o.client_id = c.id
+        WHERE o.delivery_date BETWEEN ? AND ?
+        ORDER BY o.delivery_date ASC
+    ''', (start_date, end_date))
+    orders = cursor.fetchall()
+    
+    detailed_orders = []
+    for order in orders:
+        order_id = order[0]
+        cursor.execute('''
+            SELECT r.name, oi.quantity 
+            FROM order_items oi
+            JOIN recipes r ON oi.recipe_id = r.id
+            WHERE oi.order_id = ?
+        ''', (order_id,))
+        items = cursor.fetchall()
+        detailed_orders.append({
+            'id': order_id,
+            'client': order[1],
+            'date': order[2],
+            'status': order[3],
+            'items': items
+        })
+    conn.close()
+    return detailed_orders
+
+def calculate_ingredient_requirements(start_date, end_date):
+    """
+    Calcola la somma di tutti gli ingredienti necessari per gli ordini 
+    compresi tra start_date ed end_date basandosi sulle dosi salvate nelle ricette.
+    """
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    # Recupera tutti gli item ordinati nell'intervallo di date
+    cursor.execute('''
+        SELECT oi.recipe_id, oi.quantity, r.data_json, r.yield_kg
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        JOIN recipes r ON oi.recipe_id = r.id
+        WHERE o.delivery_date BETWEEN ? AND ?
+    ''', (start_date, end_date))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    ingredient_totals = {}
+    
+    for row in rows:
+        ordered_qty = row[1]       # Quantità ordinate (es. numero di pani o kg)
+        recipe_data = json.loads(row[2]) # Dosi della ricetta
+        recipe_yield = row[3]      # Resa del lotto di ricetta (es. 10 kg)
+        
+        # Fattore di scala rispetto alla ricetta base
+        scale_factor = ordered_qty / recipe_yield if recipe_yield > 0 else 1.0
+        
+        for item in recipe_data:
+            ing_name = item['ingredient']
+            dose = float(item['dose']) * scale_factor
+            
+            if ing_name in ingredient_totals:
+                ingredient_totals[ing_name] += dose
+            else:
+                ingredient_totals[ing_name] = dose
+                
+    return ingredient_totals

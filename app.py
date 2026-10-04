@@ -59,8 +59,13 @@ if check_password():
     st.sidebar.metric("Total Monthly Overhead", f"€ {total_fixed_costs_monthly:.2f}")
     st.sidebar.metric("Fixed Overhead / kg", f"€ {fixed_incidence_per_kg:.2f} / kg")
 
-    tab1, tab2, tab3 = st.tabs(["📝 Recipe Calculator", "🌾 Raw Materials & Categories", "🏢 Monthly Fixed Overhead"])
-
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📝 Recipe Calculator", 
+    "🌾 Raw Materials & Categories", 
+    "🏢 Monthly Fixed Overhead",
+    "📅 Orders & Shopping List",
+    "👥 Client Directory"
+])
     # --- TAB 1: RECIPE CALCULATOR ---
     with tab1:
         st.subheader("Recipe Costing & Saved Recipes")
@@ -285,4 +290,115 @@ if check_password():
                 if submitted_cf and voce_cf:
                     db.add_fixed_cost(voce_cf, importo_cf)
                     st.success("Fixed expense saved!")
+                    st.rerun()
+
+# --- TAB 4: ORDERS & SHOPPING LIST ---
+    with tab4:
+        st.subheader("📅 Manage Orders & Ingredients Requirement")
+        
+        col_ord1, col_ord2 = st.columns([1, 1])
+        
+        with col_ord1:
+            st.markdown("##### ➕ Register New Order")
+            clients_list = db.get_clients()
+            recipes_list = db.get_recipes()
+            
+            if not clients_list:
+                st.warning("No clients found. Please add clients in the 'Client Directory' tab first.")
+            elif not recipes_list:
+                st.warning("No recipes found. Please save recipes in the 'Recipe Calculator' tab first.")
+            else:
+                client_options = {f"{c[1]} (Tel: {c[2]})": c[0] for c in clients_list}
+                selected_client_str = st.selectbox("Select Client:", list(client_options.keys()))
+                client_id = client_options[selected_client_str]
+                
+                delivery_date = st.date_input("Delivery / Baking Date:")
+                
+                st.markdown("**Order Items:**")
+                if "order_items_input" not in st.session_state:
+                    st.session_state.order_items_input = [{"recipe_id": recipes_list[0][0], "quantity": 1.0}]
+                    
+                if st.button("➕ Add Product to Order"):
+                    st.session_state.order_items_input.append({"recipe_id": recipes_list[0][0], "quantity": 1.0})
+                    st.rerun()
+                    
+                recipe_dict = {r[0]: f"{r[1]} (Batch yield: {r[2]} kg)" for r in recipes_list}
+                
+                order_items_payload = []
+                for idx, item in enumerate(st.session_state.order_items_input):
+                    c_rec, c_qty, c_del = st.columns([3, 2, 1])
+                    selected_rec_id = c_rec.selectbox(f"Product {idx+1}", list(recipe_dict.keys()), format_func=lambda x: recipe_dict[x], key=f"ord_rec_{idx}")
+                    qty = c_qty.number_input(f"Quantity (kg / pcs)", min_value=0.1, value=1.0, step=0.5, key=f"ord_qty_{idx}")
+                    
+                    order_items_payload.append({"recipe_id": selected_rec_id, "quantity": qty})
+                    
+                    if c_del.button("🗑️", key=f"del_ord_item_{idx}"):
+                        st.session_state.order_items_input.pop(idx)
+                        st.rerun()
+                        
+                if st.button("💾 Save Order"):
+                    db.add_order(client_id, str(delivery_date), order_items_payload)
+                    st.success("Order saved successfully!")
+                    st.session_state.order_items_input = [{"recipe_id": recipes_list[0][0], "quantity": 1.0}]
+                    st.rerun()
+
+        with col_ord2:
+            st.markdown("##### 🛒 Shopping List / Fabbisogno Ingredienti")
+            st.write("Select a date range to aggregate all required ingredients:")
+            
+            c_d1, c_d2 = st.columns(2)
+            start_d = c_d1.date_input("Start Date", key="shop_start")
+            end_d = c_d2.date_input("End Date", key="shop_end")
+            
+            if st.button("🔍 Calculate Required Ingredients"):
+                reqs = db.calculate_ingredient_requirements(str(start_d), str(end_d))
+                if reqs:
+                    st.markdown(f"**Ingredients Needed ({start_d} to {end_d}):**")
+                    df_reqs = pd.DataFrame(list(reqs.items()), columns=["Ingredient", "Total Quantity Needed"])
+                    st.dataframe(df_reqs, use_container_width=True)
+                else:
+                    st.info("No orders found in the selected date range.")
+                    
+        st.markdown("---")
+        st.markdown("##### 📜 Existing Orders")
+        orders_db = db.get_orders_by_date(str(start_d), str(end_d))
+        if orders_db:
+            for o in orders_db:
+                with st.expander(f"Order #{o['id']} - Client: {o['client']} - Date: {o['date']}"):
+                    for item in o['items']:
+                        st.write(f"- **{item[0]}**: {item[1]} kg/pcs")
+        else:
+            st.write("No orders found for this period.")
+
+    # --- TAB 5: CLIENT DIRECTORY ---
+    with tab5:
+        st.subheader("👥 Client Directory Management")
+        
+        col_cl1, col_cl2 = st.columns([2, 1])
+        
+        with col_cl1:
+            clients = db.get_clients()
+            if clients:
+                df_clients = pd.DataFrame(clients, columns=["ID", "Name", "Phone", "Email", "Notes"])
+                st.dataframe(df_clients, use_container_width=True)
+                
+                del_cl_id = st.selectbox("Select Client ID to delete:", df_clients["ID"].tolist())
+                if st.button("Delete Client"):
+                    db.delete_client(del_cl_id)
+                    st.rerun()
+            else:
+                st.info("No clients registered yet.")
+
+        with col_cl2:
+            st.markdown("##### Add New Client")
+            with st.form("form_add_client"):
+                c_name = st.text_input("Client Name / Business Name")
+                c_phone = st.text_input("Phone Number")
+                c_email = st.text_input("Email")
+                c_notes = st.text_area("Notes / Preferences")
+                
+                sub_c = st.form_submit_button("Save Client")
+                if sub_c and c_name:
+                    db.add_client(c_name, c_phone, c_email, c_notes)
+                    st.success(f"Client '{c_name}' added!")
                     st.rerun()
